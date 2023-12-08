@@ -18,7 +18,7 @@ This is a parser with Django-based admin panel. Parser is set up to parse articl
 
 # Launching
 
-**IMPORTANT: TESTED ONLY ON WINDOWS**
+**IMPORTANT: TESTED ON WINDOWS ONLY!**
 
 ## Development mode
 
