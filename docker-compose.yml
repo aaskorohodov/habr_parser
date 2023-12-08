@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  parser_console:
+    build: ./parser_console
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./parser_console:/app
+      - ./habr_parser/.env:/app/.env
+      - ./habr_parser/db.sqlite3:/app/db.sqlite3
+
+  parser_app:
+    build: ./parser_app
+    volumes:
+      - ./another-app:/app
+      - ./habr_parser/.env:/app/.env
+      - ./habr_parser/db.sqlite3:/app/db.sqlite3

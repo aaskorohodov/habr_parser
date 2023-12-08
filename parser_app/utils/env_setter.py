@@ -1,11 +1,22 @@
+"""Setter for environmental variables"""
+
+
 import io
 import os
+
 from pathlib import Path
 
 
 class EnvSetter:
+    """Setter for environmental variables"""
+
     @staticmethod
-    def set_envs(path: str):
+    def set_envs(path: str) -> None:
+        """Sets environmental variables from the provided path to .env file
+
+        Args:
+            path: Path to a .env file"""
+
         env_file_path = Path(path)
 
         # Read the .env file and set the environmental variables

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from parser_app.db_connector.sqlite.sqlite_connector import SQLiteConnector
+from parser_app.db_connector.sqlite.sqlite_connector import SQLiteFromFileConnector
 
 
 if TYPE_CHECKING:
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 class ConnectorFactory:
     __connectors = {
-            'sqlite': SQLiteConnector,
+            'sqlite': SQLiteFromFileConnector,
         }
 
     @staticmethod

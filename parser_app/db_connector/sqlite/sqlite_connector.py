@@ -1,12 +1,28 @@
+"""Connector for SQLite dialect DB"""
+
+
 import sqlite3
 
 from pathlib import Path
 
 from parser_app.db_connector.connector_interface import IConnector
+from parser_app.db_connector.sqlite.queries import GET_ARTICLE_TO_DO, GET_HUB_TO_DO
 
 
-class SQLiteConnector(IConnector):
+class SQLiteFromFileConnector(IConnector):
+    """Connector for SQLite dialect DB
+
+    Attributes:
+        db_file_path: Path to DB (file)
+        _conn: Connection-object
+        _cur: Cursor"""
+
     def __init__(self, db_file_path: Path):
+        """Init
+
+        Args:
+            db_file_path: Path to file with DB"""
+
         self.db_file_path = db_file_path
         self._conn = None
         self._cur = None
@@ -31,15 +47,8 @@ class SQLiteConnector(IConnector):
     # PUBLIC
 
     def get_hubs_to_do(self) -> dict:
-        """"""
-
         self._check_cur()
-
-        query = 'SELECT name, url, last_parsed, parse_interval_minutes, id ' \
-                'FROM db_manager_habrs ' \
-                'WHERE is_active = true'
-
-        self._cur.execute(query)
+        self._cur.execute(GET_HUB_TO_DO)
         rows = self._cur.fetchall()
         results = {}
         for row in rows:
@@ -53,15 +62,8 @@ class SQLiteConnector(IConnector):
         return results
 
     def get_articles_to_do(self) -> dict:
-        """"""
-
         self._check_cur()
-
-        query = 'SELECT header, habr_id, url ' \
-                'FROM db_manager_articles ' \
-                'WHERE parse_this = 1'
-
-        self._cur.execute(query)
+        self._cur.execute(GET_ARTICLE_TO_DO)
         rows = self._cur.fetchall()
         results = {}
         for row in rows:

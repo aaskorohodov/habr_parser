@@ -1,3 +1,6 @@
+"""Entrypoint"""
+
+
 import time
 
 from parser_app.controllers.main_controller import MainController

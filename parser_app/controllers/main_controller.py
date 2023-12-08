@@ -1,3 +1,6 @@
+"""Main application controller"""
+
+
 import datetime
 import os
 import time
@@ -8,39 +11,56 @@ from typing import Optional
 from parser_app.db_connector.connector_factory import ConnectorFactory
 from parser_app.db_connector.connector_interface import IConnector
 from parser_app.logger.standard_logger import STDLogger
-from parser_app.parsers.articles_parser.a_parser import ArticleParser
-from parser_app.parsers.habs_parser.h_parser import HabsParser
+from parser_app.parsers.parser_factory import ParserFactory
 
 
 class MainController:
+    """Main application controller
+
+    Attributes:
+        interval: Interval in seconds, in which DB will be checked for updates
+        connector: Connector to DB
+        logger: Logger, to log anything into DB"""
+
     def __init__(self,
                  interval: int,
                  logger: type[STDLogger]):
-        """Init"""
+        """Init
+
+        Args:
+            interval: Interval in seconds, in which DB will be checked for updates
+            logger: Logger, to log anything into DB"""
 
         self.interval = interval
         self.connector: Optional[IConnector] = None
         self.logger: type[STDLogger] | STDLogger = logger
 
     def start(self):
+        """Starts an endless cycle"""
+
         self._get_connector()
-        self._get_logger()
+        self._activate_logger()
 
         while True:
+            # Waiting a bit, not to overload DB with queries
             time.sleep(self.interval)
-            tasks = self._check_tasks()
-            habs = tasks['habs']
-            articles = tasks['articles']
-            if habs:
-                self._parse_habs(habs)
-            if articles:
-                self._parse_tasks(articles)
 
-            if not habs and not articles:
-                print('Nothing to do right now, all tasks are completed.')
+            # Getting Habrs and Articles, that need to be parsed (or empty collection, if all done)
+            tasks = self._check_tasks()
+            habrs = tasks['habrs']
+            articles = tasks['articles']
+
+            if habrs:
+                self._parse_this(habrs, 'habrs')
+            if articles:
+                self._parse_this(habrs, 'articles')
+
+            if not habrs and not articles:
+                print('👍 Nothing to do right now, all tasks are completed! 👍')
+                print('–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
 
     def _get_connector(self) -> None:
-        """"""
+        """Gets connector, specified in for for DB, set in .env"""
 
         db_type = os.getenv('DB_TYPE')
         db_file_path = os.getenv('DB_FILE_PATH')
@@ -51,16 +71,19 @@ class MainController:
         else:
             self.connector = connector(Path(db_file_path))
 
-    def _get_logger(self) -> None:
-        """"""
+    def _activate_logger(self) -> None:
+        """Activates provided Logger"""
 
         self.logger = self.logger(self.connector)
 
-    def _check_tasks(self):
-        """"""
+    def _check_tasks(self) -> dict:
+        """Reads DB and checks, which Habrs and Articles can be parsed
+
+        Returns:
+            Dict with Habrs and Articles, if there is any to do right now"""
 
         tasks = {
-            'habs': {},
+            'habrs': {},
             'articles': {}
         }
 
@@ -68,20 +91,27 @@ class MainController:
         tasks['articles'] = self.connector.get_articles_to_do()
 
         habs_to_parse = self._check_habs(habs)
-        tasks['habs'] = habs_to_parse
+        tasks['habrs'] = habs_to_parse
 
         return tasks
 
-    def _check_habs(self, habs: dict) -> dict:
-        """"""
+    def _check_habs(self, habrs: dict) -> dict:
+        """Checks, which Habrs can be executed now (each Habrs have a specific time-window)
 
+        Args:
+            habrs: Habrs from DB
+        Returns:
+            Only those Habrs, that can be executed now"""
+
+        # This will be Habrs, which can be parsed now (due to their timing, specified in DB)
         parse_this = {}
 
         current_dt = datetime.datetime.now()
-        for hab_name, data in habs.items():
+        for hab_name, data in habrs.items():
             last_parsed = data['last_parsed']
             parse_interval_minutes = data['parse_interval_minutes']
 
+            # In case this Habr have never being parsed before (new Habr)
             if not last_parsed:
                 parse_this[hab_name] = data
             else:
@@ -96,14 +126,16 @@ class MainController:
 
         return parse_this
 
-    def _parse_habs(self, habs: dict) -> None:
-        """"""
+    def _parse_this(self, parsing_tasks: dict, parsing_type: str) -> None:
+        """Selects a parser and activates it
 
-        h_parser = HabsParser(habs, self.logger, self.connector)
-        h_parser.parse()
+        Args:
+            parsing_tasks: Collection with Habrs or Articles to parse
+            parsing_type: String, that indicates which parser should be used"""
 
-    def _parse_tasks(self, articles: dict) -> None:
-        """"""
-
-        a_parser = ArticleParser(articles, self.logger, self.connector)
-        a_parser.parse()
+        parser = ParserFactory.get_parser(parsing_type)
+        if isinstance(parser, Exception):
+            raise Exception
+        else:
+            parser = parser(parsing_tasks, self.logger, self.connector)
+            parser.parse()

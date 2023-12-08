@@ -1,23 +1,46 @@
-import asyncio
-from abc import ABC, abstractmethod
+"""Interface/Base-class (Python-style anarchy) to create different parsers"""
 
+
+import asyncio
 import aiohttp
+
+from abc import ABC, abstractmethod
+from typing import Awaitable
 
 
 class ParserInterface(ABC):
-    @abstractmethod
-    def __init__(self):
-        self.logger = None
-        self.parser_name = ''
+    """Interface to create different parsers
+
+    Attributes:
+        logger: Logger-object to log messages into DB (or/and printing)
+        parser_name: Name of the concrete implementation
+        parallel_jobs: Number of web-pages, that will be parsed in parallel"""
 
     @abstractmethod
-    def parse_data_from_html(self, html_pages):
-        """"""
+    def __init__(self):
+        """Init"""
+
+        self.logger = None
+        self.parser_name = ''
+        self.parallel_jobs = 5
+
+    @abstractmethod
+    def parse_data_from_html(self, completed_jobs: list) -> None:
+        """Concrete logic to parse data from loaded HTML
+
+        Args:
+            completed_jobs: Each job is a collection, related to a single loaded page"""
 
         pass
 
-    async def fetch_page(self, session, job_data: dict) -> dict:
-        """"""
+    async def fetch_page(self,
+                         session: aiohttp.client.ClientSession,
+                         job_data: dict) -> dict:
+        """Fetches a web-page
+
+        Args:
+            session: AIOHttp's session object
+            job_data: Data, related to concrete web-page"""
 
         url = job_data['url']
         async with session.get(url) as response:
@@ -35,17 +58,28 @@ class ParserInterface(ABC):
 
                 return job_data
 
-    async def process_url(self, semaphore, session, job_data: dict):
-        """"""
+    async def process_url(self,
+                          semaphore: asyncio.locks.Semaphore,
+                          session: aiohttp.client.ClientSession,
+                          job_data: dict) -> dict:
+        """Processes pages with semaphore
+
+        Args:
+            semaphore: Regulates the number of parallel requests
+            session: AIOHttp's session object
+            job_data: Data, related to concrete web-page"""
 
         async with semaphore:
             return await self.fetch_page(session, job_data)
 
-    async def parse_pages(self, jobs: dict):
-        """"""
+    async def parse_pages(self, jobs: dict) -> None:
+        """Asynchronously fetches and processes multiple pages based on the job data provided.
 
-        semaphore = asyncio.Semaphore(5)  # Control concurrency: allow up to 5 tasks at a time
-        tasks = []
+        Args:
+            jobs: Dict with data, related to different web-pages to parse"""
+
+        semaphore = asyncio.Semaphore(self.parallel_jobs)
+        tasks: list[Awaitable[dict]] = []
 
         async with aiohttp.ClientSession() as session:
             for job_data in jobs.values():
