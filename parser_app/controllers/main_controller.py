@@ -53,7 +53,7 @@ class MainController:
             if habrs:
                 self._parse_this(habrs, 'habrs')
             if articles:
-                self._parse_this(habrs, 'articles')
+                self._parse_this(articles, 'articles')
 
             if not habrs and not articles:
                 print('👍 Nothing to do right now, all tasks are completed! 👍')

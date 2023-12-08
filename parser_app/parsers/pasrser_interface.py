@@ -79,7 +79,7 @@ class ParserInterface(ABC):
             jobs: Dict with data, related to different web-pages to parse"""
 
         semaphore = asyncio.Semaphore(self.parallel_jobs)
-        tasks: list[Awaitable[dict]] = []
+        tasks = []
 
         async with aiohttp.ClientSession() as session:
             for job_data in jobs.values():
